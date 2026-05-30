@@ -204,7 +204,7 @@ fn cmd_list(cfg: &Config) {
 fn cmd_test(cfg: &Config) {
     println!("正在向 {} 发送测试邮件...", cfg.to);
     let subject = "📅 日历提醒 — 测试邮件";
-    let body = "这是 calendar-notify 的测试邮件。如果你收到了,说明 Resend 密钥、发件域名和收件人都配置正确。";
+    let body = "这是 caln 的测试邮件。如果你收到了,说明 Resend 密钥、发件域名和收件人都配置正确。";
     match send_email(cfg, subject, body) {
         Ok(()) => println!("✅ 测试邮件发送成功!"),
         Err(e) => {
@@ -216,11 +216,11 @@ fn cmd_test(cfg: &Config) {
 
 fn print_help() {
     println!(
-        "calendar-notify — 日历提醒守护进程\n\n\
+        "caln — 日历提醒守护进程\n\n\
          用法:\n  \
-         calendar-notify [run]   启动守护进程(默认)\n  \
-         calendar-notify list    列出事件及触发时刻\n  \
-         calendar-notify test    立即发送一封测试邮件\n\n\
+         caln [run]   启动守护进程(默认)\n  \
+         caln list    列出事件及触发时刻\n  \
+         caln test    立即发送一封测试邮件\n\n\
          环境变量:\n  \
          RESEND_API_KEY    (必填) Resend API 密钥\n  \
          CAL_FILE          事件 YAML 路径(默认 ~/dotfiles/docs/data.yaml)\n  \

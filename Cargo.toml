@@ -1,12 +1,7 @@
 [package]
-name = "test_email"
+name = "caln"
 version = "0.1.0"
 edition = "2024"
-
-# 产物命名为 calendar-notify,服务器上 ./calendar-notify 更直观
-[[bin]]
-name = "calendar-notify"
-path = "src/main.rs"
 
 [dependencies]
 # default-features = false 关掉 native-tls(OpenSSL),只用 rustls —— 这样 musl 静态编译链接干净

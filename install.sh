@@ -1,24 +1,24 @@
 #!/usr/bin/env bash
 #
-# calendar-notify 一键安装脚本
+# caln 一键安装脚本
 #
-#   安装:  curl -fsSL https://raw.githubusercontent.com/TSK-io/test_email/main/install.sh | bash
-#   卸载:  curl -fsSL https://raw.githubusercontent.com/TSK-io/test_email/main/install.sh | bash -s -- uninstall
+#   安装:  curl -fsSL https://raw.githubusercontent.com/TSK-io/calendar-cli/main/install.sh | bash
+#   卸载:  curl -fsSL https://raw.githubusercontent.com/TSK-io/calendar-cli/main/install.sh | bash -s -- uninstall
 #
 # 做的事:下载最新 Release 二进制 -> 装到 /usr/local/bin -> 自动抓取 RESEND_API_KEY 写入
-#         /etc/calendar-notify/env(600)-> 生成 systemd 服务(以当前用户运行、开机自启、
+#         /etc/caln/env(600)-> 生成 systemd 服务(以当前用户运行、开机自启、
 #         崩溃自动重启)-> 启动。装完什么都不用管。
 #
 
 set -euo pipefail
 
-REPO="TSK-io/test_email"
-ASSET="calendar-notify-x86_64-linux"
-BIN_PATH="/usr/local/bin/calendar-notify"
-ENV_DIR="/etc/calendar-notify"
+REPO="TSK-io/calendar-cli"
+ASSET="caln-linux"
+BIN_PATH="/usr/local/bin/caln"
+ENV_DIR="/etc/caln"
 ENV_FILE="$ENV_DIR/env"
-UNIT_PATH="/etc/systemd/system/calendar-notify.service"
-SERVICE="calendar-notify"
+UNIT_PATH="/etc/systemd/system/caln.service"
+SERVICE="caln"
 
 log()  { printf '\033[1;32m==>\033[0m %s\n' "$*"; }
 warn() { printf '\033[1;33m[警告]\033[0m %s\n' "$*" >&2; }
@@ -104,7 +104,7 @@ CAL_FILE="${CAL_FILE:-$RUN_HOME/dotfiles/docs/data.yaml}"
 log "写入 systemd 服务:$UNIT_PATH(运行用户 = $RUN_USER)"
 $SUDO tee "$UNIT_PATH" >/dev/null <<UNIT
 [Unit]
-Description=calendar-notify 日历提醒守护进程
+Description=caln 日历提醒守护进程
 Documentation=https://github.com/$REPO
 After=network-online.target
 Wants=network-online.target
@@ -130,6 +130,6 @@ log "完成 ✅ 服务已启动并设为开机自启。"
 echo
 echo "  查看状态:  systemctl status $SERVICE --no-pager"
 echo "  实时日志:  journalctl -u $SERVICE -f"
-echo "  列出事件:  calendar-notify list"
-echo "  发测试邮件: RESEND_API_KEY=\$(sudo cat $ENV_FILE | cut -d= -f2-) calendar-notify test"
+echo "  列出事件:  caln list"
+echo "  发测试邮件: RESEND_API_KEY=\$(sudo cat $ENV_FILE | cut -d= -f2-) caln test"
 echo "  卸载:       curl -fsSL https://raw.githubusercontent.com/$REPO/main/install.sh | bash -s -- uninstall"

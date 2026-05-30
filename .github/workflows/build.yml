@@ -30,16 +30,16 @@ jobs:
         run: cargo build --release --target x86_64-unknown-linux-musl
 
       - name: 重命名产物
-        run: cp target/x86_64-unknown-linux-musl/release/calendar-notify calendar-notify-x86_64-linux
+        run: cp target/x86_64-unknown-linux-musl/release/caln caln-linux
 
       - name: 上传 Artifact(每次 push 都传,用于 CI 校验)
         uses: actions/upload-artifact@v4
         with:
-          name: calendar-notify-x86_64-linux
-          path: calendar-notify-x86_64-linux
+          name: caln-linux
+          path: caln-linux
 
       - name: 发布到 Release(仅当推送 tag v* 时)
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          files: calendar-notify-x86_64-linux
+          files: caln-linux
