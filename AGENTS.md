@@ -1,3 +1,4 @@
-- 一切计算都交给github actions,并发布 .deb 包到 Release
+- 一切计算都交给github actions,并发布 .deb 包到 Release, 每次改完后推送新的版本
 - 因为是个人工具所以能写死尽量写死例如收件人永远是free514dom@proton.me.
 - 越简单易用越好
+- 你可以用ssh xui查看程序运行所在的服务器的状况并调试
