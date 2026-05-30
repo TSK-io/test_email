@@ -9,6 +9,7 @@
 #         /etc/calendar-notify/env(600)-> 生成 systemd 服务(以当前用户运行、开机自启、
 #         崩溃自动重启)-> 启动。装完什么都不用管。
 #
+
 set -euo pipefail
 
 REPO="TSK-io/test_email"
