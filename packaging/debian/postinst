@@ -20,7 +20,7 @@ user_group() {
 }
 
 has_resend_key() {
-  [ -f "$1" ] && grep -q '^RESEND_API_KEY=.' "$1"
+  [ -f "$1" ] && grep -Eq '^[[:space:]]*(export[[:space:]]+)?RESEND_API_KEY[[:space:]]*=[[:space:]]*.' "$1"
 }
 
 prepare_home() {

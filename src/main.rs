@@ -14,6 +14,7 @@ const TO: &str = "free514dom@proton.me";
 const FROM: &str = "Calendar Bot <bot@sa514sa.top>";
 const LEAD_MIN: i64 = 0;
 const INTERVAL_SEC: u64 = 30;
+const ENV_FILE: &str = ".config/caln/env";
 
 /// data.yaml 的结构:顶层一个 events 列表
 #[derive(Debug, Deserialize)]
@@ -29,7 +30,7 @@ struct Event {
     title: String,
 }
 
-/// 运行期配置:只从环境变量读取密钥和 HOME
+/// 运行期配置:从环境变量或 $HOME/.config/caln/env 读取密钥
 struct Config {
     api_key: String,
     file: String,
@@ -40,12 +41,50 @@ fn load_config() -> Config {
         eprintln!("致命错误:找不到 HOME 环境变量。");
         process::exit(1);
     });
+    let api_key = env::var("RESEND_API_KEY")
+        .ok()
+        .filter(|value| !value.trim().is_empty())
+        .or_else(|| read_api_key_file(&format!("{home}/{ENV_FILE}")))
+        .unwrap_or_default();
 
     Config {
-        // 这里不强制,各子命令按需校验(list 不需要 key 也能用)
-        api_key: env::var("RESEND_API_KEY").unwrap_or_default(),
+        api_key,
         file: format!("{home}/{DATA_FILE}"),
     }
+}
+
+fn read_api_key_file(path: &str) -> Option<String> {
+    let content = fs::read_to_string(path).ok()?;
+    for line in content.lines() {
+        let line = line.trim();
+        if line.is_empty() || line.starts_with('#') {
+            continue;
+        }
+
+        let line = line.strip_prefix("export ").unwrap_or(line).trim_start();
+        let Some((key, value)) = line.split_once('=') else {
+            continue;
+        };
+        if key.trim() != "RESEND_API_KEY" {
+            continue;
+        }
+
+        let value = value.trim();
+        let value = value
+            .strip_prefix('"')
+            .and_then(|value| value.strip_suffix('"'))
+            .or_else(|| {
+                value
+                    .strip_prefix('\'')
+                    .and_then(|value| value.strip_suffix('\''))
+            })
+            .unwrap_or(value);
+
+        if !value.is_empty() {
+            return Some(value.to_string());
+        }
+    }
+    None
 }
 
 fn ensure_event_file(path: &str) -> Result<(), String> {
@@ -76,7 +115,9 @@ fn parse_trigger(ev: &Event) -> Option<DateTime<Local>> {
 
 fn send_email(cfg: &Config, subject: &str, body: &str) -> Result<(), String> {
     if cfg.api_key.is_empty() {
-        return Err("找不到 RESEND_API_KEY 环境变量".to_string());
+        return Err(format!(
+            "找不到 RESEND_API_KEY,请设置环境变量或写入 $HOME/{ENV_FILE}"
+        ));
     }
     let client = reqwest::blocking::Client::new();
     let res = client
@@ -107,8 +148,8 @@ fn reminder_body(ev: &Event) -> String {
 /// 守护进程:轮询循环,自己做调度,不依赖 cron/systemd
 fn run_daemon(cfg: &Config) {
     if cfg.api_key.is_empty() {
-        eprintln!("致命错误:找不到 RESEND_API_KEY 环境变量,无法发送邮件。");
-        process::exit(1);
+        eprintln!("找不到 RESEND_API_KEY,请设置环境变量或写入 $HOME/{ENV_FILE}。");
+        return;
     }
     println!(
         "日历提醒守护进程已启动:\n  事件文件 = {}\n  收件人   = {}\n  发件人   = {}\n  提前量   = {} 分钟\n  轮询间隔 = {} 秒",
@@ -226,8 +267,8 @@ fn print_help() {
          caln [run]   启动守护进程(默认)\n  \
          caln list    列出事件及触发时刻\n  \
          caln test    立即发送一封测试邮件\n\n\
-         环境变量:\n  \
-         RESEND_API_KEY    (必填) Resend API 密钥\n\n\
+         密钥:\n  \
+         RESEND_API_KEY    环境变量,或 $HOME/.config/caln/env\n\n\
          固定值:\n  \
          事件 YAML 路径  $HOME/dotfiles/docs/data.yaml\n  \
          收件人          free514dom@proton.me\n  \

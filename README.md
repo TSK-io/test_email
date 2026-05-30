@@ -61,7 +61,7 @@ sudo journalctl -u "caln@$USER" -f
 
 | 项 | 值 |
 |---|---|
-| 环境变量 | 只读取 `RESEND_API_KEY` |
+| 密钥 | 读取 `RESEND_API_KEY` 环境变量；没有时读取 `$HOME/.config/caln/env` |
 | 事件文件 | `$HOME/dotfiles/docs/data.yaml` |
 | 收件人 | `free514dom@proton.me` |
 | 发件人 | `Calendar Bot <bot@sa514sa.top>` |
@@ -78,6 +78,6 @@ sudo journalctl -u "caln@$USER" -f
 版本号必须和 `Cargo.toml` 一致，例如：
 
 ```bash
-git tag v0.1.3
-git push origin v0.1.3
+git tag v0.1.4
+git push origin v0.1.4
 ```
