@@ -7,9 +7,9 @@ async fn main() {
     // 1. 构建你要发送的邮件内容
     let email = Message::builder()
         // 发件人：填写你的【发送方邮箱地址】，格式严格保持 "名字 <邮箱>"
-        .from("Rust Tester <your_sender@gmail.com>".parse().unwrap()) 
+        .from("Rust Tester <kirisamefreeman@gmail.com>".parse().unwrap()) 
         // 收件人：填写你的【ProtonMail 邮箱地址】
-        .to("My Proton <your_account@proton.me>".parse().unwrap())     
+        .to("My Proton <free514dom@proton.me>".parse().unwrap())     
         .subject("来自 Rust 的测试邮件")
         .header(ContentType::TEXT_PLAIN)
         .body(String::from("你好！当你看到这封信时，说明你的 Rust 程序成功连接了 SMTP 并发送了邮件。"))
