@@ -6,7 +6,7 @@ use std::process;
 use std::thread;
 use std::time::Duration;
 
-use chrono::{DateTime, Local, NaiveDateTime, TimeZone};
+use chrono::{DateTime, FixedOffset, NaiveDateTime, TimeZone, Utc};
 use serde::Deserialize;
 use serde_json::json;
 
@@ -16,6 +16,8 @@ const FROM: &str = "Calendar Bot <bot@sa514sa.top>";
 const LEAD_MIN: i64 = 0;
 const INTERVAL_SEC: u64 = 30;
 const ENV_FILE: &str = ".config/caln/env";
+const SHANGHAI_OFFSET_SEC: i32 = 8 * 60 * 60;
+const SHANGHAI_TZ_LABEL: &str = "Asia/Shanghai (UTC+08:00)";
 
 /// data.yaml 的结构:顶层一个 events 列表
 #[derive(Debug, Deserialize)]
@@ -123,11 +125,18 @@ fn load_events(path: &str) -> Result<Vec<Event>, String> {
     Ok(sched.events)
 }
 
-/// 计算事件的触发时刻,按服务器本地时区解析
-fn parse_trigger(ev: &Event) -> Option<DateTime<Local>> {
+fn shanghai_tz() -> FixedOffset {
+    FixedOffset::east_opt(SHANGHAI_OFFSET_SEC).expect("valid Shanghai UTC+8 offset")
+}
+
+fn now_shanghai() -> DateTime<FixedOffset> {
+    Utc::now().with_timezone(&shanghai_tz())
+}
+
+/// 计算事件的触发时刻,固定按上海时间解析
+fn parse_trigger(ev: &Event) -> Option<DateTime<FixedOffset>> {
     let naive = NaiveDateTime::parse_from_str(ev.time.trim(), "%Y-%m-%d %H:%M").ok()?;
-    let local = Local.from_local_datetime(&naive).single()?;
-    Some(local)
+    shanghai_tz().from_local_datetime(&naive).single()
 }
 
 fn send_email(cfg: &Config, subject: &str, body: &str) -> Result<(), String> {
@@ -157,7 +166,10 @@ fn send_email(cfg: &Config, subject: &str, body: &str) -> Result<(), String> {
 }
 
 fn reminder_body(ev: &Event) -> String {
-    format!("你的日程「{}」时间到了。\n事件时间:{}", ev.title, ev.time)
+    format!(
+        "你的日程「{}」时间到了。\n事件时间(上海时间):{}",
+        ev.title, ev.time
+    )
 }
 
 /// 守护进程:轮询循环,自己做调度,不依赖 cron/systemd
@@ -170,17 +182,17 @@ fn run_daemon(cfg: &Config) {
         process::exit(1);
     }
     println!(
-        "日历提醒守护进程已启动:\n  事件文件 = {}\n  收件人   = {}\n  发件人   = {}\n  提前量   = {} 分钟\n  轮询间隔 = {} 秒",
-        cfg.file, TO, FROM, LEAD_MIN, INTERVAL_SEC
+        "日历提醒守护进程已启动:\n  事件文件 = {}\n  收件人   = {}\n  发件人   = {}\n  时区     = {}\n  提前量   = {} 分钟\n  轮询间隔 = {} 秒",
+        cfg.file, TO, FROM, SHANGHAI_TZ_LABEL, LEAD_MIN, INTERVAL_SEC
     );
 
     // 启动时刻;启动前已过的事件不补发
-    let mut last = Local::now();
+    let mut last = now_shanghai();
     let interval = Duration::from_secs(INTERVAL_SEC);
 
     loop {
         thread::sleep(interval);
-        let now = Local::now();
+        let now = now_shanghai();
 
         // 每拍都重新读 YAML —— 改/加事件无需重启
         let events = match load_events(&cfg.file) {
@@ -241,6 +253,7 @@ fn cmd_init(cfg: &Config) {
     println!("  密钥文件:{}", cfg.env_file);
     println!("  事件文件:{}", cfg.file);
     println!("  收件人:{}", TO);
+    println!("  时区:{}", SHANGHAI_TZ_LABEL);
     println!();
     println!("下一步:");
     println!("  1. 在密钥文件里填入 RESEND_API_KEY");
@@ -256,9 +269,9 @@ fn cmd_list(cfg: &Config) {
             process::exit(1);
         }
     };
-    let now = Local::now();
+    let now = now_shanghai();
     println!("事件文件:{}", cfg.file);
-    println!("当前时间:{}", now.format("%Y-%m-%d %H:%M:%S %z"));
+    println!("当前上海时间:{}", now.format("%Y-%m-%d %H:%M:%S %z"));
     println!("提前量:{} 分钟", LEAD_MIN);
     println!();
     if events.is_empty() {
@@ -309,6 +322,7 @@ fn print_help() {
          事件 YAML 路径  $HOME/dotfiles/docs/data.yaml\n  \
          收件人          free514dom@proton.me\n  \
          发件人          Calendar Bot <bot@sa514sa.top>\n  \
+         时区            Asia/Shanghai (UTC+08:00)\n  \
          提前量          0 分钟\n  \
          轮询间隔        30 秒"
     );

@@ -8,6 +8,7 @@
 - 发件人:`Calendar Bot <bot@sa514sa.top>`
 - 事件文件:`$HOME/dotfiles/docs/data.yaml`
 - 密钥文件:`$HOME/.config/caln/env`
+- 时区:`Asia/Shanghai (UTC+08:00)`
 - 轮询间隔:`30` 秒
 
 ## 安装
@@ -54,15 +55,15 @@ events:
     title: "交房租"
 ```
 
-时间按运行机器的本地时区解释。已经过去的事件不会补发。
+时间固定按上海时间 `Asia/Shanghai (UTC+08:00)` 解释。已经过去的事件不会补发。
 
 ## 发布
 
 本项目不要求本地打包。发布只需要改 `Cargo.toml` 版本,然后推送匹配 tag:
 
 ```bash
-git tag v0.1.5
-git push origin main v0.1.5
+git tag v0.1.6
+git push origin main v0.1.6
 ```
 
 GitHub Actions 会编译 Linux musl 二进制、生成 `.deb`、计算 SHA256,并把文件上传到对应 Release。
