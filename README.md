@@ -73,15 +73,16 @@ journalctl --user -u caln -f
 | `CAL_LEAD_MIN` | 提前多少分钟提醒 | `0` |
 | `CAL_INTERVAL_SEC` | 轮询间隔秒数 | `30` |
 
-## 构建
+## 发布
 
-由 GitHub Actions 编译（x86_64 musl 静态链接）并打包。推送 `v*` tag 即发布：
+不要在本地或服务器上编译。推送 `v*` tag 后，GitHub Actions 会编译 x86_64 musl 静态二进制、打包并发布：
 
 - `caln_<version>_amd64.deb`
 - `SHA256SUMS`
 
-需要本地打包时使用同一脚本：
+版本号必须和 `Cargo.toml` 一致，例如：
 
 ```bash
-TARGET=x86_64-unknown-linux-musl ./packaging/build-deb.sh
+git tag v0.1.0
+git push origin v0.1.0
 ```
