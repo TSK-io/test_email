@@ -7,7 +7,7 @@ async fn main() {
     // 1. 构建你要发送的邮件内容
     let email = Message::builder()
         // 发件人：填写你的【发送方邮箱地址】，格式严格保持 "名字 <邮箱>"
-        .from("Rust Tester <kirisamefreeman@gmail.com>".parse().unwrap()) 
+        .from("Rust Tester <00000000yangkun@gmail.com>".parse().unwrap()) 
         // 收件人：填写你的【ProtonMail 邮箱地址】
         .to("My Proton <free514dom@proton.me>".parse().unwrap())     
         .subject("来自 Rust 的测试邮件")
@@ -17,8 +17,8 @@ async fn main() {
 
     // 2. 配置 SMTP 凭证 (发送方邮箱的账号和密码)
     let creds = Credentials::new(
-        "your_sender@gmail.com".to_owned(), // 【需要替换：你的发送方邮箱账号】
-        "your_app_password".to_owned(),     // 【需要替换：该邮箱的“应用专用密码” / 授权码，绝大多数不是网页登录密码！】
+        "00000000yangkun@gmail.com".to_owned(), // 【需要替换：你的发送方邮箱账号】
+        "wzhhmyxqyiwlmfpe".to_owned(),     // 【需要替换：该邮箱的“应用专用密码” / 授权码，绝大多数不是网页登录密码！】
     );
 
     // 3. 设置 SMTP 服务器地址 (以 Gmail 为例)
