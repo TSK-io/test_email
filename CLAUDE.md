@@ -1,2 +1,2 @@
 这个项目是远程服务SSHFS过来的,服务器处已经做了域名解析,ssl证书申请,和resend的api密钥,本地没有,为什么要挂载过来因为服务器仅512mb内存,运行vscode remote插件会卡死
-你不应该在服务器端和本地编译那会卡死我,我希望你把一切计算都交给github actions,并发布二进制版本到realease
+你不应该在服务器端和本地编译那会卡死我,我希望你把一切计算都交给github actions,并发布 .deb 包到 Release

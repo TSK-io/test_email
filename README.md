@@ -1,23 +1,38 @@
 # caln
 
-极简日历提醒守护进程:读 YAML 里的日程，到点用 [Resend](https://resend.com) 发邮件提醒。单文件静态二进制，无依赖，systemd 托管。
+极简日历提醒守护进程:读 YAML 里的日程，到点用 [Resend](https://resend.com) 发邮件提醒。Release 提供 `.deb` 包，安装后得到 `caln` CLI 和 systemd 用户服务。
 
 ## 安装
 
-```bash
-curl -fsSL https://raw.githubusercontent.com/TSK-io/calendar-cli/main/install.sh | bash
-```
-
-脚本会下载最新 Release 二进制到 `/usr/local/bin/caln`，自动从环境变量或 shell 配置里抓取 `RESEND_API_KEY` 写入 `/etc/caln/env`，并生成开机自启的 systemd 服务。若环境里没有密钥：
+从 GitHub Release 下载最新的 `caln_*_amd64.deb`，然后安装：
 
 ```bash
-RESEND_API_KEY=你的密钥 bash -c "$(curl -fsSL https://raw.githubusercontent.com/TSK-io/calendar-cli/main/install.sh)"
+sudo apt install ./caln_*_amd64.deb
 ```
+
+配置 Resend 密钥：
+
+```bash
+mkdir -p ~/.config/caln
+chmod 700 ~/.config/caln
+printf 'RESEND_API_KEY=%s\n' '你的密钥' > ~/.config/caln/env
+chmod 600 ~/.config/caln/env
+```
+
+启用服务：
+
+```bash
+systemctl --user daemon-reload
+systemctl --user enable --now caln
+```
+
+需要无人登录也自动运行时，再执行一次 `loginctl enable-linger "$USER"`。
 
 卸载：
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/TSK-io/calendar-cli/main/install.sh | bash -s -- uninstall
+systemctl --user disable --now caln
+sudo apt remove caln
 ```
 
 ## 配置事件
@@ -40,7 +55,12 @@ caln list     # 列出事件及触发时刻
 caln test     # 立即发一封测试邮件
 ```
 
-服务管理：`systemctl status caln`，日志：`journalctl -u caln -f`。
+服务管理：
+
+```bash
+systemctl --user status caln
+journalctl --user -u caln -f
+```
 
 ## 环境变量
 
@@ -55,4 +75,13 @@ caln test     # 立即发一封测试邮件
 
 ## 构建
 
-由 GitHub Actions 编译（x86_64 musl 静态链接）。推送 `v*` tag 即发布 `caln-linux` 到 Release。
+由 GitHub Actions 编译（x86_64 musl 静态链接）并打包。推送 `v*` tag 即发布：
+
+- `caln_<version>_amd64.deb`
+- `SHA256SUMS`
+
+需要本地打包时使用同一脚本：
+
+```bash
+TARGET=x86_64-unknown-linux-musl ./packaging/build-deb.sh
+```

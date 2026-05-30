@@ -1,45 +1,47 @@
-name: Build & Release
+name: Release Debian Package
 
 on:
   push:
-    branches: [ "main" ]
     tags: [ "v*" ]
 
 permissions:
   contents: write
 
 jobs:
-  build:
+  deb:
     runs-on: ubuntu-latest
     steps:
-      - name: 获取代码
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: 安装 Rust(stable)+ musl target
+      - name: Install Rust stable with musl target
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: x86_64-unknown-linux-musl
 
-      - name: 安装 musl 工具链
+      - name: Install packaging tools
         run: sudo apt-get update && sudo apt-get install -y musl-tools
 
-      - name: 缓存依赖
+      - name: Cache dependencies
         uses: Swatinem/rust-cache@v2
 
-      - name: 编译静态二进制(musl)
-        run: cargo build --release --target x86_64-unknown-linux-musl
+      - name: Check release version
+        run: |
+          version="$(awk -F'"' '/^version =/ { print $2; exit }' Cargo.toml)"
+          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "tag $GITHUB_REF_NAME does not match Cargo.toml version $version" >&2
+            exit 1
+          fi
 
-      - name: 重命名产物
-        run: cp target/x86_64-unknown-linux-musl/release/caln caln-linux
+      - name: Build .deb
+        run: TARGET=x86_64-unknown-linux-musl ./packaging/build-deb.sh
 
-      - name: 上传 Artifact(每次 push 都传,用于 CI 校验)
-        uses: actions/upload-artifact@v4
-        with:
-          name: caln-linux
-          path: caln-linux
+      - name: Create checksums
+        run: cd dist && sha256sum *.deb > SHA256SUMS
 
-      - name: 发布到 Release(仅当推送 tag v* 时)
-        if: startsWith(github.ref, 'refs/tags/')
+      - name: Publish release assets
         uses: softprops/action-gh-release@v2
         with:
-          files: caln-linux
+          files: |
+            dist/*.deb
+            dist/SHA256SUMS

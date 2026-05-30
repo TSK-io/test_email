@@ -1,0 +1,13 @@
+[Unit]
+Description=caln calendar reminder daemon
+Documentation=https://github.com/TSK-io/calendar-cli
+
+[Service]
+Type=simple
+EnvironmentFile=-%h/.config/caln/env
+ExecStart=/usr/bin/caln run
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=default.target
