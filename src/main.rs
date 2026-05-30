@@ -1,40 +1,40 @@
-use lettre::message::header::ContentType;
-use lettre::transport::smtp::authentication::Credentials;
-use lettre::{Message, AsyncSmtpTransport, Tokio1Executor, AsyncTransport};
+use std::env;
+use serde_json::json;
 
 #[tokio::main]
-async fn main() {
-    // 1. 构建你要发送的邮件内容
-    let email = Message::builder()
-        // 发件人：填写你的【发送方邮箱地址】，格式严格保持 "名字 <邮箱>"
-        .from("Rust Tester <00000000yangkun@gmail.com>".parse().unwrap()) 
-        // 收件人：填写你的【ProtonMail 邮箱地址】
-        .to("My Proton <free514dom@proton.me>".parse().unwrap())     
-        .subject("来自 Rust 的测试邮件")
-        .header(ContentType::TEXT_PLAIN)
-        .body(String::from("你好！当你看到这封信时，说明你的 Rust 程序成功连接了 SMTP 并发送了邮件。"))
-        .unwrap();
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // 1. 从环境变量获取 Resend 的 API Key
+    let api_key = env::var("RESEND_API_KEY")
+        .expect("致命错误：找不到 RESEND_API_KEY 环境变量！");
 
-    // 2. 配置 SMTP 凭证 (发送方邮箱的账号和密码)
-    let creds = Credentials::new(
-        "00000000yangkun@gmail.com".to_owned(), // 【需要替换：你的发送方邮箱账号】
-        "wzhhmyxqyiwlmfpe".to_owned(),     // 【需要替换：该邮箱的“应用专用密码” / 授权码，绝大多数不是网页登录密码！】
-    );
+    // 2. 构建 HTTP 客户端
+    let client = reqwest::Client::new();
 
-    // 3. 设置 SMTP 服务器地址 (以 Gmail 为例)
-    // 如果你用的是 QQ 邮箱，这里是 "smtp.qq.com"
-    // 如果是 163 邮箱，这里是 "smtp.163.com"
-    let mailer: AsyncSmtpTransport<Tokio1Executor> =
-        AsyncSmtpTransport::<Tokio1Executor>::relay("smtp.gmail.com") // 【需要替换：你发送方邮箱对应的 SMTP 地址】
-            .unwrap()
-            .credentials(creds)
-            .build();
+    println!("正在通过 443 端口 API 发送邮件...");
 
-    println!("正在尝试发送邮件，请稍候...");
+    // 3. 构造请求并发送
+    let res = client.post("https://api.resend.com/emails")
+        .header("Authorization", format!("Bearer {}", api_key))
+        .header("Content-Type", "application/json")
+        .json(&json!({
+            // 发件人：一旦你在 Resend 验证了域名，就可以随便编前缀了！
+            "from": "Rust 机器人 <bot@sa514sa.top>", 
+            // 收件人：你的 ProtonMail
+            "to": "My Proton <free514dom@proton.me>",
+            "subject": "来自 Rust API 的测试邮件！",
+            "text": "成功啦！这封邮件走的是 HTTPS 的 443 端口，DigitalOcean 根本拦不住我们。"
+        }))
+        .send()
+        .await?;
 
-    // 4. 发送邮件并处理结果
-    match mailer.send(email).await {
-        Ok(_) => println!("✅ 邮件发送成功！快去 ProtonMail 查收吧。"),
-        Err(e) => eprintln!("❌ 邮件发送失败: {:?}", e),
+    // 4. 检查结果
+    if res.status().is_success() {
+        println!("✅ 邮件发送成功！HTTP 状态码: {}", res.status());
+    } else {
+        // 如果失败，打印出 Resend 接口返回的详细错误信息
+        let error_text = res.text().await?;
+        eprintln!("❌ 发送失败，Resend 返回错误: {}", error_text);
     }
+
+    Ok(())
 }
