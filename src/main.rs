@@ -1,5 +1,6 @@
 use std::env;
 use std::fs;
+use std::path::Path;
 use std::process;
 use std::thread;
 use std::time::Duration;
@@ -47,7 +48,19 @@ fn load_config() -> Config {
     }
 }
 
+fn ensure_event_file(path: &str) -> Result<(), String> {
+    let path = Path::new(path);
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent).map_err(|e| format!("创建事件目录失败: {e}"))?;
+    }
+    if !path.exists() {
+        fs::write(path, "events: []\n").map_err(|e| format!("创建事件文件失败: {e}"))?;
+    }
+    Ok(())
+}
+
 fn load_events(path: &str) -> Result<Vec<Event>, String> {
+    ensure_event_file(path)?;
     let content = fs::read_to_string(path).map_err(|e| format!("读取 {path} 失败: {e}"))?;
     let sched: Schedule =
         serde_yaml::from_str(&content).map_err(|e| format!("解析 YAML 失败: {e}"))?;

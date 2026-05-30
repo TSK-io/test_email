@@ -2,7 +2,7 @@
 set -e
 
 find_caln_user() {
-  if [ -n "${CALN_USER:-}" ] && [ "$CALN_USER" != root ]; then
+  if [ -n "${CALN_USER:-}" ]; then
     printf '%s\n' "$CALN_USER"
     return
   fi
@@ -15,18 +15,60 @@ find_caln_user() {
   awk -F: '$3 >= 1000 && $3 < 65534 && $6 ~ "^/home/" { print $1; exit }' /etc/passwd
 }
 
+user_group() {
+  id -gn "$1"
+}
+
+has_resend_key() {
+  [ -f "$1" ] && grep -q '^RESEND_API_KEY=.' "$1"
+}
+
+prepare_home() {
+  user="$1"
+  home="$2"
+  group="$(user_group "$user")"
+  env_file="$home/.config/caln/env"
+  data_file="$home/dotfiles/docs/data.yaml"
+
+  install -d -m 700 -o "$user" -g "$group" "$home/.config/caln"
+  install -d -m 755 -o "$user" -g "$group" "$home/dotfiles" "$home/dotfiles/docs"
+
+  if [ ! -f "$env_file" ]; then
+    if [ -n "${RESEND_API_KEY:-}" ]; then
+      printf 'RESEND_API_KEY=%s\n' "$RESEND_API_KEY" > "$env_file"
+    else
+      printf 'RESEND_API_KEY=\n' > "$env_file"
+    fi
+    chown "$user:$group" "$env_file"
+    chmod 600 "$env_file"
+  fi
+
+  if [ ! -f "$data_file" ]; then
+    printf 'events: []\n' > "$data_file"
+    chown "$user:$group" "$data_file"
+    chmod 644 "$data_file"
+  fi
+}
+
 case "$1" in
   configure)
     systemctl daemon-reload >/dev/null 2>&1 || true
 
     user="$(find_caln_user)"
+    if [ -z "$user" ]; then
+      user=root
+    fi
+
     if [ -n "$user" ] && id "$user" >/dev/null 2>&1; then
       unit="caln@$user.service"
       home="$(getent passwd "$user" | awk -F: '{ print $6 }')"
 
+      prepare_home "$user" "$home"
       systemctl enable "$unit" >/dev/null 2>&1 || true
-      if [ -f "$home/.config/caln/env" ]; then
+      if has_resend_key "$home/.config/caln/env"; then
         systemctl restart "$unit" >/dev/null 2>&1 || true
+      else
+        echo "caln: created $home/.config/caln/env; fill RESEND_API_KEY and run: systemctl restart $unit" >&2
       fi
     else
       echo "caln: cannot determine target user; run: sudo systemctl enable --now caln@USER.service" >&2

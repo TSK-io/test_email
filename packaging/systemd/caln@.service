@@ -10,6 +10,7 @@ Type=simple
 User=%i
 Environment=HOME=%h
 EnvironmentFile=%h/.config/caln/env
+ExecCondition=/bin/sh -c 'grep -q "^RESEND_API_KEY=." "$HOME/.config/caln/env"'
 ExecStart=/usr/bin/caln run
 Restart=on-failure
 RestartSec=10

@@ -4,22 +4,25 @@
 
 ## 安装
 
-先配置 Resend 密钥：
-
-```bash
-mkdir -p ~/.config/caln
-chmod 700 ~/.config/caln
-printf 'RESEND_API_KEY=%s\n' '你的密钥' > ~/.config/caln/env
-chmod 600 ~/.config/caln/env
-```
-
 从 GitHub Release 下载最新的 `caln_*_amd64.deb`，然后安装：
 
 ```bash
 sudo apt install ./caln_*_amd64.deb
 ```
 
-安装脚本会自动启用并启动 `caln@$USER.service`。如果你在 root shell 里安装，先退出 root，用自己的用户执行 `sudo apt install`。
+安装脚本会自动创建：
+
+- `$HOME/.config/caln/env`
+- `$HOME/dotfiles/docs/data.yaml`
+- `caln@$USER.service`
+
+如果安装前环境里已有 `RESEND_API_KEY`，服务会自动启动：
+
+```bash
+RESEND_API_KEY='你的密钥' apt install ./caln_*_amd64.deb
+```
+
+如果你已经安装过包，只要填好 `$HOME/.config/caln/env`，再升级新版包即可自动启动。
 
 卸载：
 
@@ -75,6 +78,6 @@ sudo journalctl -u "caln@$USER" -f
 版本号必须和 `Cargo.toml` 一致，例如：
 
 ```bash
-git tag v0.1.2
-git push origin v0.1.2
+git tag v0.1.3
+git push origin v0.1.3
 ```
