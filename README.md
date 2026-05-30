@@ -54,7 +54,7 @@ sudo systemctl status "caln@$USER"
 sudo journalctl -u "caln@$USER" -f
 ```
 
-## 固定配置
+## 固定配置(仅个人工具直接固定值)
 
 | 项 | 值 |
 |---|---|
