@@ -1,0 +1,14 @@
+#!/bin/sh
+set -e
+
+case "$1" in
+  remove|deconfigure)
+    for link in /etc/systemd/system/multi-user.target.wants/caln@*.service; do
+      [ -e "$link" ] || continue
+      systemctl disable --now "$(basename "$link")" >/dev/null 2>&1 || true
+    done
+    systemctl daemon-reload >/dev/null 2>&1 || true
+    ;;
+esac
+
+exit 0

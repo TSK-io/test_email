@@ -27,12 +27,14 @@ PKG_DIR="$WORK_DIR/root"
 trap 'rm -rf "$WORK_DIR"' EXIT
 
 install -Dm0755 "$BIN" "$PKG_DIR/usr/bin/caln"
-install -Dm0644 packaging/systemd/caln.service "$PKG_DIR/usr/lib/systemd/user/caln.service"
+install -Dm0644 packaging/systemd/caln@.service "$PKG_DIR/usr/lib/systemd/system/caln@.service"
 install -Dm0644 README.md "$PKG_DIR/usr/share/doc/caln/README.md"
 install -Dm0644 packaging/examples/env "$PKG_DIR/usr/share/doc/caln/examples/env"
 
 INSTALLED_SIZE="$(du -ks "$PKG_DIR/usr" | awk '{print $1}')"
 mkdir -p "$PKG_DIR/DEBIAN" "$OUT_DIR"
+install -m0755 packaging/debian/postinst "$PKG_DIR/DEBIAN/postinst"
+install -m0755 packaging/debian/prerm "$PKG_DIR/DEBIAN/prerm"
 cat > "$PKG_DIR/DEBIAN/control" <<CONTROL
 Package: caln
 Version: $VERSION
@@ -44,7 +46,7 @@ Installed-Size: $INSTALLED_SIZE
 Homepage: https://github.com/TSK-io/calendar-cli
 Description: Minimal YAML calendar reminder daemon
  caln reads events from a YAML file and sends email reminders through Resend.
- It installs a CLI binary and a systemd user service; user secrets stay in
+ It installs a CLI binary and a systemd service; user secrets stay in
  ~/.config/caln/env and are never embedded in the package.
 CONTROL
 

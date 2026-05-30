@@ -1,16 +1,10 @@
 # caln
 
-极简日历提醒守护进程:读 YAML 里的日程，到点用 [Resend](https://resend.com) 发邮件提醒。Release 提供 `.deb` 包，安装后得到 `caln` CLI 和 systemd 用户服务。
+极简日历提醒守护进程:读 `$HOME/dotfiles/docs/data.yaml`，到点用 [Resend](https://resend.com) 发邮件到 `free514dom@proton.me`。Release 提供 `.deb` 包，安装后得到 `caln` CLI 和开机自启的 systemd 服务。
 
 ## 安装
 
-从 GitHub Release 下载最新的 `caln_*_amd64.deb`，然后安装：
-
-```bash
-sudo apt install ./caln_*_amd64.deb
-```
-
-配置 Resend 密钥：
+先配置 Resend 密钥：
 
 ```bash
 mkdir -p ~/.config/caln
@@ -19,25 +13,23 @@ printf 'RESEND_API_KEY=%s\n' '你的密钥' > ~/.config/caln/env
 chmod 600 ~/.config/caln/env
 ```
 
-启用服务：
+从 GitHub Release 下载最新的 `caln_*_amd64.deb`，然后安装：
 
 ```bash
-systemctl --user daemon-reload
-systemctl --user enable --now caln
+sudo apt install ./caln_*_amd64.deb
 ```
 
-需要无人登录也自动运行时，再执行一次 `loginctl enable-linger "$USER"`。
+安装脚本会自动启用并启动 `caln@$USER.service`。如果你在 root shell 里安装，先退出 root，用自己的用户执行 `sudo apt install`。
 
 卸载：
 
 ```bash
-systemctl --user disable --now caln
 sudo apt remove caln
 ```
 
 ## 配置事件
 
-编辑事件文件（默认 `~/dotfiles/docs/data.yaml`，或用 `CAL_FILE` 指定）。守护进程每轮重读，改完即时生效、无需重启：
+编辑事件文件 `$HOME/dotfiles/docs/data.yaml`。守护进程每轮重读，改完即时生效、无需重启：
 
 ```yaml
 events:
@@ -58,20 +50,20 @@ caln test     # 立即发一封测试邮件
 服务管理：
 
 ```bash
-systemctl --user status caln
-journalctl --user -u caln -f
+sudo systemctl status "caln@$USER"
+sudo journalctl -u "caln@$USER" -f
 ```
 
-## 环境变量
+## 固定配置
 
-| 变量 | 说明 | 默认 |
-|---|---|---|
-| `RESEND_API_KEY` | Resend API 密钥（必填） | — |
-| `CAL_FILE` | 事件 YAML 路径 | `~/dotfiles/docs/data.yaml` |
-| `CAL_TO` | 收件人 | `free514dom@proton.me` |
-| `CAL_FROM` | 发件人 | `Calendar Bot <bot@sa514sa.top>` |
-| `CAL_LEAD_MIN` | 提前多少分钟提醒 | `0` |
-| `CAL_INTERVAL_SEC` | 轮询间隔秒数 | `30` |
+| 项 | 值 |
+|---|---|
+| 环境变量 | 只读取 `RESEND_API_KEY` |
+| 事件文件 | `$HOME/dotfiles/docs/data.yaml` |
+| 收件人 | `free514dom@proton.me` |
+| 发件人 | `Calendar Bot <bot@sa514sa.top>` |
+| 提前量 | `0` 分钟 |
+| 轮询间隔 | `30` 秒 |
 
 ## 发布
 
@@ -83,6 +75,6 @@ journalctl --user -u caln -f
 版本号必须和 `Cargo.toml` 一致，例如：
 
 ```bash
-git tag v0.1.0
-git push origin v0.1.0
+git tag v0.1.2
+git push origin v0.1.2
 ```

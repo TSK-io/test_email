@@ -1,9 +1,1 @@
-# Required.
 RESEND_API_KEY=
-
-# Optional overrides.
-# CAL_FILE=~/dotfiles/docs/data.yaml
-# CAL_TO=free514dom@proton.me
-# CAL_FROM=Calendar Bot <bot@sa514sa.top>
-# CAL_LEAD_MIN=0
-# CAL_INTERVAL_SEC=30

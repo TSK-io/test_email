@@ -1,0 +1,18 @@
+[Unit]
+Description=caln calendar reminder daemon for %i
+Documentation=https://github.com/TSK-io/calendar-cli
+After=network-online.target
+Wants=network-online.target
+ConditionPathExists=%h/.config/caln/env
+
+[Service]
+Type=simple
+User=%i
+Environment=HOME=%h
+EnvironmentFile=%h/.config/caln/env
+ExecStart=/usr/bin/caln run
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

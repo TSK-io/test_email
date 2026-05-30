@@ -1,0 +1,37 @@
+#!/bin/sh
+set -e
+
+find_caln_user() {
+  if [ -n "${CALN_USER:-}" ] && [ "$CALN_USER" != root ]; then
+    printf '%s\n' "$CALN_USER"
+    return
+  fi
+
+  if [ -n "${SUDO_USER:-}" ] && [ "$SUDO_USER" != root ]; then
+    printf '%s\n' "$SUDO_USER"
+    return
+  fi
+
+  awk -F: '$3 >= 1000 && $3 < 65534 && $6 ~ "^/home/" { print $1; exit }' /etc/passwd
+}
+
+case "$1" in
+  configure)
+    systemctl daemon-reload >/dev/null 2>&1 || true
+
+    user="$(find_caln_user)"
+    if [ -n "$user" ] && id "$user" >/dev/null 2>&1; then
+      unit="caln@$user.service"
+      home="$(getent passwd "$user" | awk -F: '{ print $6 }')"
+
+      systemctl enable "$unit" >/dev/null 2>&1 || true
+      if [ -f "$home/.config/caln/env" ]; then
+        systemctl restart "$unit" >/dev/null 2>&1 || true
+      fi
+    else
+      echo "caln: cannot determine target user; run: sudo systemctl enable --now caln@USER.service" >&2
+    fi
+    ;;
+esac
+
+exit 0

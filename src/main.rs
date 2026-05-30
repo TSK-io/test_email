@@ -4,9 +4,15 @@ use std::process;
 use std::thread;
 use std::time::Duration;
 
-use chrono::{DateTime, Duration as ChronoDuration, Local, NaiveDateTime, TimeZone};
+use chrono::{DateTime, Local, NaiveDateTime, TimeZone};
 use serde::Deserialize;
 use serde_json::json;
+
+const DATA_FILE: &str = "dotfiles/docs/data.yaml";
+const TO: &str = "free514dom@proton.me";
+const FROM: &str = "Calendar Bot <bot@sa514sa.top>";
+const LEAD_MIN: i64 = 0;
+const INTERVAL_SEC: u64 = 30;
 
 /// data.yaml 的结构:顶层一个 events 列表
 #[derive(Debug, Deserialize)]
@@ -22,55 +28,37 @@ struct Event {
     title: String,
 }
 
-/// 运行期配置,全部来自环境变量
+/// 运行期配置:只从环境变量读取密钥和 HOME
 struct Config {
     api_key: String,
     file: String,
-    to: String,
-    from: String,
-    lead_min: i64,
-    interval_sec: u64,
-}
-
-fn env_or(key: &str, default: &str) -> String {
-    env::var(key).unwrap_or_else(|_| default.to_string())
-}
-
-/// 展开开头的 "~/" 为 $HOME
-fn expand_tilde(path: &str) -> String {
-    if let Some(rest) = path.strip_prefix("~/") {
-        if let Ok(home) = env::var("HOME") {
-            return format!("{home}/{rest}");
-        }
-    }
-    path.to_string()
 }
 
 fn load_config() -> Config {
-    let home = env::var("HOME").unwrap_or_default();
-    let default_file = format!("{home}/dotfiles/docs/data.yaml");
+    let home = env::var("HOME").unwrap_or_else(|_| {
+        eprintln!("致命错误:找不到 HOME 环境变量。");
+        process::exit(1);
+    });
+
     Config {
         // 这里不强制,各子命令按需校验(list 不需要 key 也能用)
         api_key: env::var("RESEND_API_KEY").unwrap_or_default(),
-        file: expand_tilde(&env_or("CAL_FILE", &default_file)),
-        to: env_or("CAL_TO", "free514dom@proton.me"),
-        from: env_or("CAL_FROM", "Calendar Bot <bot@sa514sa.top>"),
-        lead_min: env_or("CAL_LEAD_MIN", "0").parse().unwrap_or(0),
-        interval_sec: env_or("CAL_INTERVAL_SEC", "30").parse().unwrap_or(30),
+        file: format!("{home}/{DATA_FILE}"),
     }
 }
 
 fn load_events(path: &str) -> Result<Vec<Event>, String> {
     let content = fs::read_to_string(path).map_err(|e| format!("读取 {path} 失败: {e}"))?;
-    let sched: Schedule = serde_yaml::from_str(&content).map_err(|e| format!("解析 YAML 失败: {e}"))?;
+    let sched: Schedule =
+        serde_yaml::from_str(&content).map_err(|e| format!("解析 YAML 失败: {e}"))?;
     Ok(sched.events)
 }
 
-/// 计算事件的触发时刻(事件时间减去提前量),按服务器本地时区解析
-fn parse_trigger(ev: &Event, lead_min: i64) -> Option<DateTime<Local>> {
+/// 计算事件的触发时刻,按服务器本地时区解析
+fn parse_trigger(ev: &Event) -> Option<DateTime<Local>> {
     let naive = NaiveDateTime::parse_from_str(ev.time.trim(), "%Y-%m-%d %H:%M").ok()?;
     let local = Local.from_local_datetime(&naive).single()?;
-    Some(local - ChronoDuration::minutes(lead_min))
+    Some(local)
 }
 
 fn send_email(cfg: &Config, subject: &str, body: &str) -> Result<(), String> {
@@ -82,8 +70,8 @@ fn send_email(cfg: &Config, subject: &str, body: &str) -> Result<(), String> {
         .post("https://api.resend.com/emails")
         .header("Authorization", format!("Bearer {}", cfg.api_key))
         .json(&json!({
-            "from": cfg.from,
-            "to": cfg.to,
+            "from": FROM,
+            "to": TO,
             "subject": subject,
             "text": body,
         }))
@@ -99,15 +87,8 @@ fn send_email(cfg: &Config, subject: &str, body: &str) -> Result<(), String> {
     }
 }
 
-fn reminder_body(ev: &Event, lead_min: i64) -> String {
-    if lead_min <= 0 {
-        format!("你的日程「{}」时间到了。\n事件时间:{}", ev.title, ev.time)
-    } else {
-        format!(
-            "提醒:你的日程「{}」将于 {} 开始(提前 {} 分钟通知)。",
-            ev.title, ev.time, lead_min
-        )
-    }
+fn reminder_body(ev: &Event) -> String {
+    format!("你的日程「{}」时间到了。\n事件时间:{}", ev.title, ev.time)
 }
 
 /// 守护进程:轮询循环,自己做调度,不依赖 cron/systemd
@@ -118,12 +99,12 @@ fn run_daemon(cfg: &Config) {
     }
     println!(
         "日历提醒守护进程已启动:\n  事件文件 = {}\n  收件人   = {}\n  发件人   = {}\n  提前量   = {} 分钟\n  轮询间隔 = {} 秒",
-        cfg.file, cfg.to, cfg.from, cfg.lead_min, cfg.interval_sec
+        cfg.file, TO, FROM, LEAD_MIN, INTERVAL_SEC
     );
 
     // 启动时刻;启动前已过的事件不补发
     let mut last = Local::now();
-    let interval = Duration::from_secs(cfg.interval_sec.max(1));
+    let interval = Duration::from_secs(INTERVAL_SEC);
 
     loop {
         thread::sleep(interval);
@@ -134,25 +115,36 @@ fn run_daemon(cfg: &Config) {
             Ok(ev) => ev,
             Err(e) => {
                 // 不推进 last,下一拍窗口自动覆盖这段时间
-                eprintln!("[{}] 读取事件失败,稍后重试:{}", now.format("%Y-%m-%d %H:%M:%S"), e);
+                eprintln!(
+                    "[{}] 读取事件失败,稍后重试:{}",
+                    now.format("%Y-%m-%d %H:%M:%S"),
+                    e
+                );
                 continue;
             }
         };
 
         for ev in &events {
-            let trigger = match parse_trigger(ev, cfg.lead_min) {
+            let trigger = match parse_trigger(ev) {
                 Some(t) => t,
                 None => {
-                    eprintln!("跳过无法解析时间的事件:time=\"{}\" title=\"{}\"", ev.time, ev.title);
+                    eprintln!(
+                        "跳过无法解析时间的事件:time=\"{}\" title=\"{}\"",
+                        ev.time, ev.title
+                    );
                     continue;
                 }
             };
             // 左开右闭窗口 (last, now]:每个事件只触发一次
             if trigger > last && trigger <= now {
                 let subject = format!("📅 日历提醒:{}", ev.title);
-                let body = reminder_body(ev, cfg.lead_min);
+                let body = reminder_body(ev);
                 match send_email(cfg, &subject, &body) {
-                    Ok(()) => println!("[{}] 已发送提醒:{}", now.format("%Y-%m-%d %H:%M:%S"), ev.title),
+                    Ok(()) => println!(
+                        "[{}] 已发送提醒:{}",
+                        now.format("%Y-%m-%d %H:%M:%S"),
+                        ev.title
+                    ),
                     Err(e) => eprintln!(
                         "[{}] 发送失败({}):{}",
                         now.format("%Y-%m-%d %H:%M:%S"),
@@ -178,14 +170,14 @@ fn cmd_list(cfg: &Config) {
     let now = Local::now();
     println!("事件文件:{}", cfg.file);
     println!("当前时间:{}", now.format("%Y-%m-%d %H:%M:%S %z"));
-    println!("提前量:{} 分钟", cfg.lead_min);
+    println!("提前量:{} 分钟", LEAD_MIN);
     println!();
     if events.is_empty() {
         println!("(没有事件)");
         return;
     }
     for ev in &events {
-        match parse_trigger(ev, cfg.lead_min) {
+        match parse_trigger(ev) {
             Some(trigger) => {
                 let status = if trigger > now { "未来" } else { "已过" };
                 println!(
@@ -202,7 +194,7 @@ fn cmd_list(cfg: &Config) {
 }
 
 fn cmd_test(cfg: &Config) {
-    println!("正在向 {} 发送测试邮件...", cfg.to);
+    println!("正在向 {} 发送测试邮件...", TO);
     let subject = "📅 日历提醒 — 测试邮件";
     let body = "这是 caln 的测试邮件。如果你收到了,说明 Resend 密钥、发件域名和收件人都配置正确。";
     match send_email(cfg, subject, body) {
@@ -222,12 +214,13 @@ fn print_help() {
          caln list    列出事件及触发时刻\n  \
          caln test    立即发送一封测试邮件\n\n\
          环境变量:\n  \
-         RESEND_API_KEY    (必填) Resend API 密钥\n  \
-         CAL_FILE          事件 YAML 路径(默认 ~/dotfiles/docs/data.yaml)\n  \
-         CAL_TO            收件人(默认 free514dom@proton.me)\n  \
-         CAL_FROM          发件人(默认 \"Calendar Bot <bot@sa514sa.top>\")\n  \
-         CAL_LEAD_MIN      提前多少分钟提醒(默认 0)\n  \
-         CAL_INTERVAL_SEC  轮询间隔秒数(默认 30)"
+         RESEND_API_KEY    (必填) Resend API 密钥\n\n\
+         固定值:\n  \
+         事件 YAML 路径  $HOME/dotfiles/docs/data.yaml\n  \
+         收件人          free514dom@proton.me\n  \
+         发件人          Calendar Bot <bot@sa514sa.top>\n  \
+         提前量          0 分钟\n  \
+         轮询间隔        30 秒"
     );
 }
 
