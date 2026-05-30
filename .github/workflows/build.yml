@@ -31,7 +31,10 @@ jobs:
           fi
 
       - name: Build binary
-        run: cargo build --release --target x86_64-unknown-linux-musl
+        run: cargo build --locked --release --target x86_64-unknown-linux-musl
+
+      - name: Test
+        run: cargo test --locked
 
       - name: Build .deb
         run: ./packaging/build-deb.sh target/x86_64-unknown-linux-musl/release/caln

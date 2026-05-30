@@ -41,13 +41,13 @@ Version: $VERSION
 Section: utils
 Priority: optional
 Architecture: amd64
-Maintainer: TSK-io <noreply@github.com>
+Maintainer: TSK-io <free514dom@proton.me>
 Installed-Size: $INSTALLED_SIZE
 Homepage: https://github.com/TSK-io/calendar-cli
 Description: Minimal YAML calendar reminder daemon
  caln reads events from a YAML file and sends email reminders through Resend.
- It installs a CLI binary and a systemd service; user secrets stay in
- ~/.config/caln/env and are never embedded in the package.
+ It installs a CLI binary, a systemd service, and simple default files under
+ the target user's home directory.
 CONTROL
 
 DEB_PATH="$OUT_DIR/$PACKAGE.deb"

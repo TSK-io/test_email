@@ -1,5 +1,6 @@
 use std::env;
 use std::fs;
+use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
 use std::process;
 use std::thread;
@@ -34,6 +35,7 @@ struct Event {
 struct Config {
     api_key: String,
     file: String,
+    env_file: String,
 }
 
 fn load_config() -> Config {
@@ -41,15 +43,17 @@ fn load_config() -> Config {
         eprintln!("致命错误:找不到 HOME 环境变量。");
         process::exit(1);
     });
+    let env_file = format!("{home}/{ENV_FILE}");
     let api_key = env::var("RESEND_API_KEY")
         .ok()
         .filter(|value| !value.trim().is_empty())
-        .or_else(|| read_api_key_file(&format!("{home}/{ENV_FILE}")))
+        .or_else(|| read_api_key_file(&env_file))
         .unwrap_or_default();
 
     Config {
         api_key,
         file: format!("{home}/{DATA_FILE}"),
+        env_file,
     }
 }
 
@@ -87,6 +91,19 @@ fn read_api_key_file(path: &str) -> Option<String> {
     None
 }
 
+fn ensure_env_file(path: &str) -> Result<(), String> {
+    let path = Path::new(path);
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent).map_err(|e| format!("创建配置目录失败: {e}"))?;
+    }
+    if !path.exists() {
+        fs::write(path, "RESEND_API_KEY=\n").map_err(|e| format!("创建密钥文件失败: {e}"))?;
+    }
+    fs::set_permissions(path, fs::Permissions::from_mode(0o600))
+        .map_err(|e| format!("设置密钥文件权限失败: {e}"))?;
+    Ok(())
+}
+
 fn ensure_event_file(path: &str) -> Result<(), String> {
     let path = Path::new(path);
     if let Some(parent) = path.parent() {
@@ -115,9 +132,7 @@ fn parse_trigger(ev: &Event) -> Option<DateTime<Local>> {
 
 fn send_email(cfg: &Config, subject: &str, body: &str) -> Result<(), String> {
     if cfg.api_key.is_empty() {
-        return Err(format!(
-            "找不到 RESEND_API_KEY,请设置环境变量或写入 $HOME/{ENV_FILE}"
-        ));
+        return Err(format!("找不到 RESEND_API_KEY,请写入 {}", cfg.env_file));
     }
     let client = reqwest::blocking::Client::new();
     let res = client
@@ -148,8 +163,11 @@ fn reminder_body(ev: &Event) -> String {
 /// 守护进程:轮询循环,自己做调度,不依赖 cron/systemd
 fn run_daemon(cfg: &Config) {
     if cfg.api_key.is_empty() {
-        eprintln!("找不到 RESEND_API_KEY,请设置环境变量或写入 $HOME/{ENV_FILE}。");
-        return;
+        eprintln!(
+            "找不到 RESEND_API_KEY,请运行 `caln init` 后编辑 {}。",
+            cfg.env_file
+        );
+        process::exit(1);
     }
     println!(
         "日历提醒守护进程已启动:\n  事件文件 = {}\n  收件人   = {}\n  发件人   = {}\n  提前量   = {} 分钟\n  轮询间隔 = {} 秒",
@@ -213,6 +231,23 @@ fn run_daemon(cfg: &Config) {
     }
 }
 
+fn cmd_init(cfg: &Config) {
+    if let Err(e) = ensure_env_file(&cfg.env_file).and_then(|_| ensure_event_file(&cfg.file)) {
+        eprintln!("初始化失败:{e}");
+        process::exit(1);
+    }
+
+    println!("已初始化 caln:");
+    println!("  密钥文件:{}", cfg.env_file);
+    println!("  事件文件:{}", cfg.file);
+    println!("  收件人:{}", TO);
+    println!();
+    println!("下一步:");
+    println!("  1. 在密钥文件里填入 RESEND_API_KEY");
+    println!("  2. 运行 `caln test` 发送测试邮件");
+    println!("  3. 运行 `caln run` 启动提醒");
+}
+
 fn cmd_list(cfg: &Config) {
     let events = match load_events(&cfg.file) {
         Ok(ev) => ev,
@@ -265,6 +300,7 @@ fn print_help() {
         "caln — 日历提醒守护进程\n\n\
          用法:\n  \
          caln [run]   启动守护进程(默认)\n  \
+         caln init    创建密钥文件和事件文件\n  \
          caln list    列出事件及触发时刻\n  \
          caln test    立即发送一封测试邮件\n\n\
          密钥:\n  \
@@ -283,6 +319,7 @@ fn main() {
     let cmd = env::args().nth(1).unwrap_or_else(|| "run".to_string());
     match cmd.as_str() {
         "run" => run_daemon(&cfg),
+        "init" => cmd_init(&cfg),
         "list" => cmd_list(&cfg),
         "test" => cmd_test(&cfg),
         "-h" | "--help" | "help" => print_help(),
