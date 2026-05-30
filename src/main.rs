@@ -14,7 +14,7 @@ use serde_json::json;
 
 const DATA_FILE: &str = "dotfiles/docs/data.yaml";
 const TO: &str = "free514dom@proton.me";
-const FROM: &str = "Calendar Bot <bot@sa514sa.top>";
+const FROM: &str = "Calendar Bot <bot@000514000.xyz>";
 const LEAD_MIN: i64 = 0;
 const INTERVAL_SEC: u64 = 30;
 const ENV_FILE: &str = ".config/caln/env";
@@ -456,7 +456,7 @@ fn print_help() {
          事件 YAML 路径  $HOME/dotfiles/docs/data.yaml\n  \
          发送记录路径    $HOME/.config/caln/sent.log\n  \
          收件人          free514dom@proton.me\n  \
-         发件人          Calendar Bot <bot@sa514sa.top>\n  \
+         发件人          Calendar Bot <bot@000514000.xyz>\n  \
          时区            Asia/Shanghai (UTC+08:00)\n  \
          提前量          0 分钟\n  \
          轮询间隔        30 秒\n  \

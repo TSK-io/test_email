@@ -5,7 +5,7 @@
 固定值:
 
 - 收件人:`free514dom@proton.me`
-- 发件人:`Calendar Bot <bot@sa514sa.top>`
+- 发件人:`Calendar Bot <bot@000514000.xyz>`
 - 事件文件:`$HOME/dotfiles/docs/data.yaml`
 - 密钥文件:`$HOME/.config/caln/env`
 - 发送记录:`$HOME/.config/caln/sent.log`
@@ -67,8 +67,8 @@ events:
 本项目不要求本地打包。发布只需要改 `Cargo.toml` 版本,然后推送匹配 tag:
 
 ```bash
-git tag v0.1.7
-git push origin main v0.1.7
+git tag v0.1.8
+git push origin main v0.1.8
 ```
 
 GitHub Actions 会编译 Linux musl 二进制、生成 `.deb`、计算 SHA256,并把文件上传到对应 Release。
