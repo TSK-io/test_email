@@ -28,6 +28,7 @@ prepare_home() {
   home="$2"
   group="$(user_group "$user")"
   env_file="$home/.config/caln/env"
+  sent_file="$home/.config/caln/sent.log"
   data_file="$home/dotfiles/docs/data.yaml"
 
   install -d -m 700 -o "$user" -g "$group" "$home/.config/caln"
@@ -41,6 +42,12 @@ prepare_home() {
     fi
     chown "$user:$group" "$env_file"
     chmod 600 "$env_file"
+  fi
+
+  if [ ! -f "$sent_file" ]; then
+    : > "$sent_file"
+    chown "$user:$group" "$sent_file"
+    chmod 600 "$sent_file"
   fi
 
   if [ ! -f "$data_file" ]; then
