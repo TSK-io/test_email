@@ -1,24 +1,45 @@
-name: Rust Build
+name: Build & Release
 
 on:
   push:
     branches: [ "main" ]
+    tags: [ "v*" ]
+
+permissions:
+  contents: write
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    - name: 获取代码
-      uses: actions/checkout@v4
+      - name: 获取代码
+        uses: actions/checkout@v4
 
-    - name: 缓存依赖
-      uses: Swatinem/rust-cache@v2
+      - name: 安装 Rust(stable)+ musl target
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-unknown-linux-musl
 
-    - name: 编译 Release 版本
-      run: cargo build --release
+      - name: 安装 musl 工具链
+        run: sudo apt-get update && sudo apt-get install -y musl-tools
 
-    - name: 上传 Artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: test_email_linux_binary
-        path: target/release/test_email
+      - name: 缓存依赖
+        uses: Swatinem/rust-cache@v2
+
+      - name: 编译静态二进制(musl)
+        run: cargo build --release --target x86_64-unknown-linux-musl
+
+      - name: 重命名产物
+        run: cp target/x86_64-unknown-linux-musl/release/calendar-notify calendar-notify-x86_64-linux
+
+      - name: 上传 Artifact(每次 push 都传,用于 CI 校验)
+        uses: actions/upload-artifact@v4
+        with:
+          name: calendar-notify-x86_64-linux
+          path: calendar-notify-x86_64-linux
+
+      - name: 发布到 Release(仅当推送 tag v* 时)
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: calendar-notify-x86_64-linux

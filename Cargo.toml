@@ -3,7 +3,15 @@ name = "test_email"
 version = "0.1.0"
 edition = "2024"
 
+# 产物命名为 calendar-notify,服务器上 ./calendar-notify 更直观
+[[bin]]
+name = "calendar-notify"
+path = "src/main.rs"
+
 [dependencies]
-reqwest = { version = "0.12", features = ["json", "rustls-tls"] }
-serde_json = "1.0"
-tokio = { version = "1", features = ["full"] }
+# default-features = false 关掉 native-tls(OpenSSL),只用 rustls —— 这样 musl 静态编译链接干净
+reqwest = { version = "0.12", default-features = false, features = ["blocking", "json", "rustls-tls"] }
+serde = { version = "1", features = ["derive"] }
+serde_yaml = "0.9"
+chrono = "0.4"
+serde_json = "1"
