@@ -7,6 +7,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let api_key = env::var("RESEND_API_KEY")
         .expect("致命错误：找不到 RESEND_API_KEY 环境变量！");
 
+
     // 2. 构建 HTTP 客户端
     let client = reqwest::Client::new();
 
