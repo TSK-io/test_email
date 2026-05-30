@@ -1,0 +1,10 @@
+[package]
+name = "test_email"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+# 邮件库，开启异步和 TLS 加密支持
+lettre = { version = "0.11", features = ["tokio1", "tokio1-native-tls"] }
+# 异步运行时
+tokio = { version = "1", features = ["full"] }
