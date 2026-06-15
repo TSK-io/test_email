@@ -3,13 +3,15 @@ Description=caln calendar reminder daemon for %i
 Documentation=https://github.com/TSK-io/calendar-cli
 After=network-online.target
 Wants=network-online.target
-ConditionPathExists=%h/.config/caln/env
 
 [Service]
 Type=simple
+# User=%i is the account name (caln@<user>.service). systemd sets $HOME,
+# $USER, etc. from that account, so `caln run` reads ~/.config/caln/env and
+# ~/dotfiles/docs/data.yaml from the correct home for any user (incl. root).
+# Do NOT set HOME=%h or use %h in paths: in a system unit %h is always /root,
+# which is why the daemon was skipped for non-root users.
 User=%i
-Environment=HOME=%h
-EnvironmentFile=-%h/.config/caln/env
 ExecStart=/usr/bin/caln run
 Restart=on-failure
 RestartSec=10
